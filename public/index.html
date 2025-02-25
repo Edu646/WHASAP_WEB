@@ -100,17 +100,19 @@
         #nameForm {
             margin-top: 30px;
             display: flex;
+            flex-direction: column;
             gap: 10px;
+            width: 250px;
         }
 
-        #nameInput {
+        #nameInput, #statusInput {
             padding: 12px 15px;
             border-radius: 24px;
             border: none;
             background-color: var(--input-bg);
             color: var(--text-primary);
             font-size: 14px;
-            width: 250px;
+            width: 100%;
             outline: none;
         }
 
@@ -199,6 +201,21 @@
             align-items: center;
         }
 
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .user-status {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         #userNames li img {
             width: 40px;
             height: 40px;
@@ -260,37 +277,33 @@
             font-size: 14px;
             line-height: 19px;
             word-wrap: break-word;
+            overflow-wrap: break-word;
             position: relative;
         }
-
-        
 
         .sent .message-content {
            background: var(--message-out);
             color: var(--message-text-out);
             border-top-right-radius: 0;
-            margin-left: 140%;  /* Esto alineará el mensaje a la derecha */
-}
+            margin-left: auto;  /* Esto alineará el mensaje a la derecha */
+        }
 
-.sent .message-content::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: -8px;
-    width: 0;
-    height: 0;
-    border-left: 8px solid var(--message-out);
-    border-top: 8px solid transparent;
-}
+        .sent .message-content::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -8px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid var(--message-out);
+            border-top: 8px solid transparent;
+        }
 
-/* Alinear la imagen del perfil a la derecha */
-.sent .profile-image {
-    margin-left: auto;
-    order: 2;
-}
-
-
-        
+        /* Alinear la imagen del perfil a la derecha */
+        .sent .profile-image {
+            margin-left: auto;
+            order: 2;
+        }
 
         .received .message-content {
             background: var(--message-in);
@@ -382,6 +395,82 @@
             background-color: #009670;
         }
 
+        /* Estilos para el botón de subir archivos */
+        #fileUploadButton {
+            background-color: var(--input-bg);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-secondary);
+            position: relative;
+            transition: background-color 0.2s;
+        }
+
+        #fileUploadButton:hover {
+            background-color: rgba(42, 57, 66, 0.8);
+            color: var(--text-primary);
+        }
+
+        #fileUploadButton svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* Estilos para archivos compartidos */
+        .file-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .image-preview {
+            max-width: 250px;
+            max-height: 250px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .file-download {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            background-color: rgba(0, 168, 132, 0.2);
+            border-radius: 4px;
+            text-decoration: none;
+            color: var(--whatsapp-green);
+            font-weight: 500;
+            font-size: 12px;
+            margin-top: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .file-download:hover {
+            background-color: rgba(0, 168, 132, 0.3);
+        }
+
+        .file-download svg {
+            width: 16px;
+            height: 16px;
+            margin-right: 4px;
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
             #mainContent {
@@ -412,6 +501,7 @@
         </div>
         <form id="nameForm">
             <input id="nameInput" type="text" placeholder="Tu nombre" required />
+            <input id="statusInput" type="text" placeholder="Tu estado (opcional)" />
             <button type="submit">Entrar</button>
         </form>
         <div id="profilePics">
@@ -434,6 +524,14 @@
             <p id="userName"></p>
             <ul id="messages"></ul>
             <form id="form">
+                <label id="fileUploadButton" for="fileInput">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                </label>
+                <input type="file" id="fileInput" />
                 <input id="input" autocomplete="off" placeholder="Escribe un mensaje..." />
                 <button type="submit">↑</button>
             </form>
@@ -444,15 +542,18 @@
         const socket = io();
         let selectedProfile = null;
         let typingTimer;
+        let myUserName = ""; // Variable para almacenar mi nombre de usuario
 
         document.addEventListener('DOMContentLoaded', () => {
             const nameForm = document.getElementById('nameForm');
             const nameInput = document.getElementById('nameInput');
+            const statusInput = document.getElementById('statusInput');
             const loadingScreen = document.getElementById('loadingScreen');
             const mainContent = document.getElementById('mainContent');
             const messages = document.getElementById('messages');
             const form = document.getElementById('form');
             const input = document.getElementById('input');
+            const fileInput = document.getElementById('fileInput');
             const progressBar = document.getElementById('progressBar');
             const profilePics = document.getElementById('profilePics');
             const userNameText = document.getElementById('userName');
@@ -506,9 +607,16 @@
                     return;
                 }
                 
+                // Guardamos el nombre del usuario para uso posterior
+                myUserName = nameInput.value.trim();
+                
+                // Usar un estado predeterminado si no se proporciona uno
+                const userStatus = statusInput.value || "hola";
+                
                 socket.emit('setUserName', {
-                    userName: nameInput.value.trim(),
+                    userName: myUserName,
                     profile: selectedProfile,
+                    status: userStatus
                 });
 
                 loadingScreen.style.opacity = 0;
@@ -517,8 +625,66 @@
                     mainContent.style.display = 'flex';
                 }, 800);
 
-                userNameText.innerText = `Hola, ${nameInput.value.trim()}`;
+                userNameText.innerText = `Hola, ${myUserName}`;
             });
+
+            // Subida de archivos - CORREGIDO
+            fileInput.addEventListener('change', (e) => {
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    // Mostrar indicador de carga
+                    const uploadingNotification = document.createElement('div');
+                    uploadingNotification.classList.add('notification');
+                    uploadingNotification.textContent = `Subiendo archivo: ${file.name}...`;
+                    messages.appendChild(uploadingNotification);
+                    messages.scrollTop = messages.scrollHeight;
+                    
+                    // Enviar archivo al servidor
+                    fetch('/upload-file', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error en la respuesta del servidor');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Eliminar la notificación de carga
+                        uploadingNotification.remove();
+                        
+                        console.log("Archivo subido correctamente:", data);
+                        
+                        // Emitir evento de archivo compartido
+                        socket.emit('file shared', {
+                            userName: myUserName,
+                            profile: selectedProfile,
+                            fileUrl: data.fileUrl,
+                            fileName: file.name,
+                            fileType: file.mimetype || data.fileType,
+                            fileSize: formatFileSize(file.size)
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        uploadingNotification.textContent = `Error al subir el archivo: ${error.message}`;
+                    });
+                    
+                    // Limpiar input de archivo
+                    fileInput.value = '';
+                }
+            });
+
+            // Formatear tamaño de archivo
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' bytes';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+                else return (bytes / 1048576).toFixed(2) + ' MB';
+            }
 
             // Mensajes de chat
             form.addEventListener('submit', (e) => {
@@ -526,7 +692,7 @@
                 const message = input.value.trim();
                 if (message) {
                     socket.emit('chat message', {
-                        userName: nameInput.value.trim(),
+                        userName: myUserName,
                         profile: selectedProfile,
                         message: message,
                     });
@@ -535,7 +701,7 @@
                     clearTimeout(typingTimer);
                     if (isTyping) {
                         isTyping = false;
-                        socket.emit('stop typing');
+                        socket.emit('stop typing', { userName: myUserName });
                     }
                     
                     input.value = '';
@@ -552,7 +718,7 @@
                     messages.appendChild(notificationDiv);
                 } else {
                     const li = document.createElement('li');
-                    li.classList.add(data.userName === nameInput.value.trim() ? 'sent' : 'received');
+                    li.classList.add(data.userName === myUserName ? 'sent' : 'received');
                     
                     // Crear contenedor para la imagen de perfil
                     const profileImage = document.createElement('img');
@@ -575,7 +741,74 @@
                 messages.scrollTop = messages.scrollHeight;
             });
 
-            // Lista de usuarios conectados
+            // Manejo de archivos compartidos - CORREGIDO
+            socket.on('file shared', (data) => {
+                console.log("Recibido evento file shared:", data);
+                
+                const li = document.createElement('li');
+                li.classList.add(data.userName === myUserName ? 'sent' : 'received');
+                
+                // Crear contenedor para la imagen de perfil
+                const profileImage = document.createElement('img');
+                profileImage.src = getProfileImagePath(data.profile);
+                profileImage.alt = `${data.userName}'s Profile`;
+                profileImage.classList.add('profile-image');
+                
+                // Crear contenedor para el contenido del archivo
+                const messageContent = document.createElement('div');
+                messageContent.classList.add('message-content');
+                
+                // Contenedor para el archivo
+                const fileContainer = document.createElement('div');
+                fileContainer.classList.add('file-container');
+                
+                // Verificar si es una imagen
+                const isImage = data.fileType && data.fileType.startsWith('image/');
+                
+                if (isImage) {
+                    // Mostrar vista previa de la imagen
+                    const imagePreview = document.createElement('img');
+                    imagePreview.src = data.fileUrl;
+                    imagePreview.alt = data.fileName;
+                    imagePreview.classList.add('image-preview');
+                    fileContainer.appendChild(imagePreview);
+                }
+                
+                // Información del archivo
+                const fileInfo = document.createElement('div');
+                fileInfo.classList.add('file-info');
+                fileInfo.textContent = `${data.fileName} (${data.fileSize})`;
+                fileContainer.appendChild(fileInfo);
+                
+                // Enlace de descarga
+                const downloadLink = document.createElement('a');
+                downloadLink.href = data.fileUrl;
+                downloadLink.download = data.fileName;
+                downloadLink.classList.add('file-download');
+                
+                // Ícono de descarga
+                downloadLink.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Descargar
+                `;
+                
+                fileContainer.appendChild(downloadLink);
+                messageContent.appendChild(fileContainer);
+                
+                // Añadir elementos al mensaje
+                li.appendChild(profileImage);
+                li.appendChild(messageContent);
+                messages.appendChild(li);
+                
+                // Desplazar al final
+                messages.scrollTop = messages.scrollHeight;
+            });
+
+            // Lista de usuarios conectados - CORREGIDO
             socket.on('update users', (users) => {
                 userNamesList.innerHTML = '';
                 users.forEach(user => {
@@ -586,59 +819,70 @@
                     profileImg.src = getProfileImagePath(user.profile);
                     profileImg.alt = `${user.name}'s profile`;
                     
+                    // Contenedor para información del usuario
+                    const userInfo = document.createElement('div');
+                    userInfo.classList.add('user-info');
+                    
                     // Añadir nombre de usuario
                     const nameSpan = document.createElement('span');
                     nameSpan.textContent = user.name;
+                    userInfo.appendChild(nameSpan);
+                    
+                    // Añadir estado del usuario (corregido)
+                    const statusSpan = document.createElement('span');
+                    statusSpan.classList.add('user-status');
+                    statusSpan.textContent = user.status || "Disponible";
+                    userInfo.appendChild(statusSpan);
                     
                     li.appendChild(profileImg);
-                    li.appendChild(nameSpan);
+                    li.appendChild(userInfo);
                     userNamesList.appendChild(li);
                 });
             });
 
             // Detectar escritura y enviar eventos
             input.addEventListener('input', () => {
-    if (!isTyping) {
-        isTyping = true;
-        socket.emit('typing', { userName: nameInput.value.trim() });
-    }
+                if (!isTyping) {
+                    isTyping = true;
+                    socket.emit('typing', { userName: myUserName });
+                }
 
-    clearTimeout(typingTimer);
-    typingTimer = setTimeout(() => {
-        isTyping = false;
-        socket.emit('stop typing', { userName: nameInput.value.trim() });
-    }, 3000); // 3 segundos de inactividad
-});
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(() => {
+                    isTyping = false;
+                    socket.emit('stop typing', { userName: myUserName });
+                }, 3000); // 3 segundos de inactividad
+            });
 
-socket.on('typing', (data) => {
-    const userItems = userNamesList.querySelectorAll('li');
-    userItems.forEach(item => {
-        if (item.querySelector('span').textContent === data.userName) {
-            let typingIndicator = item.querySelector('[data-typing="true"]');
-            if (!typingIndicator) {
-                typingIndicator = document.createElement('small');
-                typingIndicator.textContent = ' (escribiendo...)';
-                typingIndicator.style.color = 'var(--whatsapp-green)';
-                typingIndicator.setAttribute('data-typing', 'true');
-                item.appendChild(typingIndicator);
-            }
-        }
-    });
-});
+            socket.on('typing', (data) => {
+                const userItems = userNamesList.querySelectorAll('li');
+                userItems.forEach(item => {
+                    if (item.querySelector('.user-info span:first-child').textContent === data.userName) {
+                        let typingIndicator = item.querySelector('[data-typing="true"]');
+                        if (!typingIndicator) {
+                            typingIndicator = document.createElement('small');
+                            typingIndicator.textContent = ' (escribiendo...)';
+                            typingIndicator.style.color = 'var(--whatsapp-green)';
+                            typingIndicator.setAttribute('data-typing', 'true');
+                            item.querySelector('.user-info').appendChild(typingIndicator);
+                        }
+                    }
+                });
+            });
 
-socket.on('stop typing', (data) => {
-    const userItems = userNamesList.querySelectorAll('li');
-    userItems.forEach(item => {
-        if (item.querySelector('span').textContent === data.userName) {
-            const typingIndicator = item.querySelector('[data-typing="true"]');
-            if (typingIndicator) {
-                typingIndicator.remove();
-            }
-        }
-    });
-});
-
+            socket.on('stop typing', (data) => {
+                const userItems = userNamesList.querySelectorAll('li');
+                userItems.forEach(item => {
+                    if (item.querySelector('.user-info span:first-child').textContent === data.userName) {
+                        const typingIndicator = item.querySelector('[data-typing="true"]');
+                        if (typingIndicator) {
+                            typingIndicator.remove();
+                        }
+                    }
+                });
+            });
         });
     </script>
 </body>
 </html>
+</antArtif>
