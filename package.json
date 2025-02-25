@@ -4,13 +4,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon ./Servidor/index.js"
+    "dev": "node ./Servidor/index.js"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "node": "^3.1.9"
   },
   "dependencies": {
     "express": "^4.21.2",
