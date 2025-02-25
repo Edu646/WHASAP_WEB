@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Web Simulación</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --whatsapp-green: #00a884;
+            --dark-bg: #111b21;
+            --chat-bg: #0b141a;
+            --panel-bg: #202c33;
+            --input-bg: #2a3942;
+            --border-color: #374045;
+            --text-primary: #e9edef;
+            --text-secondary: #8696a0;
+            --message-out: #005c4b;
+            --message-in: #202c33;
+            --message-text-out: #e9edef;
+            --message-text-in: #e9edef;
+            --sidebar-header: #202c33;
+            --chat-header: #202c33;
+            --notification-bar: #182229;
+        }
+
+        body {
+            font-family: Segoe UI, Helvetica Neue, Helvetica, Lucida Grande, Arial, Ubuntu, Cantarell, Fira Sans, sans-serif;
+            background-color: var(--dark-bg);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--text-primary);
+        }
+
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--dark-bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.8s ease-out;
+        }
+
+        .fa-whatsapp {
+            font-size: 60px;
+            color: var(--whatsapp-green);
+            margin-bottom: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 168, 132, 0.2);
+            border-left-color: var(--whatsapp-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #loadingText {
+            color: var(--text-primary);
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .progress-bar {
+            width: 320px;
+            height: 3px;
+            background-color: var(--panel-bg);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-bar-inner {
+            height: 100%;
+            width: 0;
+            background-color: var(--whatsapp-green);
+            animation: progress 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes progress {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        #nameForm {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        #nameInput {
+            padding: 12px 15px;
+            border-radius: 24px;
+            border: none;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            width: 250px;
+            outline: none;
+        }
+
+        #nameForm button {
+            padding: 10px 20px;
+            background-color: var(--whatsapp-green);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        #nameForm button:hover {
+            background-color: #009670;
+        }
+
+        #profilePics {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+            padding: 16px;
+        }
+
+        #profilePics img {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            object-fit: cover;
+            border: 2px solid transparent;
+        }
+
+        #profilePics img:hover {
+            transform: scale(1.1);
+        }
+
+        #profilePics img[data-selected="true"] {
+            border: 2px solid var(--whatsapp-green);
+        }
+
+        #mainContent {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            margin: 0 auto;
+            background: var(--dark-bg);
+            position: relative;
+        }
+
+        #userList {
+            width: 30%;
+            max-width: 420px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #userList h2 {
+            padding: 16px;
+            margin: 0;
+            background-color: var(--sidebar-header);
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #userNames {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+        }
+
+        #userNames li {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        #userNames li img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            object-fit: cover;
+        }
+
+        #userNames li:hover {
+            background-color: rgba(42, 57, 66, 0.6);
+        }
+
+        h1 {
+            padding: 10px 16px;
+            margin: 0;
+            background-color: var(--chat-header);
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+
+        #userName {
+            padding: 8px 16px;
+            margin: 0;
+            background-color: var(--notification-bar);
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        #messages {
+            list-style-type: none;
+            padding: 16px;
+            margin: 0;
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+            background: var(--chat-bg);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill-rule='evenodd' d='M41 37.59V25h-2v12.59l-5.41-5.41L32 33.75 40 41.75l8-8-1.59-1.57-5.41 5.41'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-color: var(--chat-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #messages li {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            margin: 1px 0;
+            max-width: 65%;
+        }
+
+        .message-content {
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 19px;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        
+
+        .sent .message-content {
+            background: var(--message-out);
+            color: var(--message-text-out);
+            border-top-right-radius: 0;
+        }
+
+        .sent .message-content::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -8px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid var(--message-out);
+            border-top: 8px solid transparent;
+        }
+
+        
+
+        .received .message-content {
+            background: var(--message-in);
+            color: var(--message-text-in);
+            border-top-left-radius: 0;
+            margin-right: 100%;
+        }
+
+        .received .message-content::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -8px;
+            width: 0;
+            height: 0;
+            border-right: 8px solid var(--message-in);
+            border-top: 8px solid transparent;
+        }
+
+        .profile-image {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .received .profile-image {
+            margin-right: 10px;
+        }
+
+        .sent .profile-image {
+            margin-left: 10px;
+            order: 2;
+        }
+
+        .notification {
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 10px 0;
+            font-size: 12px;
+            background-color: rgba(32, 44, 51, 0.7);
+            padding: 5px 10px;
+            border-radius: 8px;
+            align-self: center;
+            width: auto;
+            max-width: 80%;
+        }
+
+        form {
+            display: flex;
+            padding: 10px;
+            background-color: var(--panel-bg);
+            border-top: 1px solid var(--border-color);
+            align-items: center;
+        }
+
+        form input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 15px;
+            outline: none;
+            margin-right: 10px;
+        }
+
+        form input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        form button {
+            width: 40px;
+            height: 40px;
+            background-color: var(--whatsapp-green);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        form button:hover {
+            background-color: #009670;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            #mainContent {
+                flex-direction: column;
+            }
+            
+            #userList {
+                width: 100%;
+                max-width: none;
+                height: 30%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            #messages {
+                height: calc(70vh - 120px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <i class="fa-brands fa-whatsapp"></i>
+        <p id="loadingText">Cargando WhatsApp Web...</p>
+        <div class="progress-bar">
+            <div class="progress-bar-inner" id="progressBar"></div>
+        </div>
+        <form id="nameForm">
+            <input id="nameInput" type="text" placeholder="Tu nombre" required />
+            <button type="submit">Entrar</button>
+        </form>
+        <div id="profilePics">
+            <img src="/img/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f776174747061642d6d656469612d736572766963652f53746f7279496d6167652f474833616d692d386f362d5579673d3d2d313535312e313630316563373.jpeg" alt="Perfil 1" data-profile="1" />
+            <img src="/img/descarga%20(1).jpeg" alt="Perfil 2" data-profile="2" />
+            <img src="/img/descarga.jpeg" alt="Perfil 3" data-profile="3" />
+            <img src="/img/images%20(1).jpeg" alt="Perfil 4" data-profile="4" />
+            <img src="/img/images.jpeg" alt="Perfil 5" data-profile="5" />
+        </div>
+    </div>
+
+    <div id="mainContent" style="display: none;">
+        <div id="userList">
+            <h2>Usuarios Conectados</h2>
+            <ul id="userNames"></ul>
+        </div>
+
+        <div style="flex: 1; display: flex; flex-direction: column;">
+            <h1>WhatsApp Web Simulación</h1>
+            <p id="userName"></p>
+            <ul id="messages"></ul>
+            <form id="form">
+                <input id="input" autocomplete="off" placeholder="Escribe un mensaje..." />
+                <button type="submit">↑</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let selectedProfile = null;
+        let typingTimer;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameForm = document.getElementById('nameForm');
+            const nameInput = document.getElementById('nameInput');
+            const loadingScreen = document.getElementById('loadingScreen');
+            const mainContent = document.getElementById('mainContent');
+            const messages = document.getElementById('messages');
+            const form = document.getElementById('form');
+            const input = document.getElementById('input');
+            const progressBar = document.getElementById('progressBar');
+            const profilePics = document.getElementById('profilePics');
+            const userNameText = document.getElementById('userName');
+            const userNamesList = document.getElementById('userNames');
+            let isTyping = false;
+
+            // Mapa para obtener la ruta de la imagen según el perfil seleccionado
+            const profileImageMap = {
+                "1": "/img/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f776174747061642d6d656469612d736572766963652f53746f7279496d6167652f474833616d692d386f362d5579673d3d2d313535312e313630316563373.jpeg",
+                "2": "/img/descarga%20(1).jpeg",
+                "3": "/img/descarga.jpeg",
+                "4": "/img/images%20(1).jpeg",
+                "5": "/img/images.jpeg",
+                "system": "/img/system.png" // Imagen para mensajes del sistema
+            };
+
+            // Función para obtener la ruta de la imagen de perfil
+            function getProfileImagePath(profileId) {
+                return profileImageMap[profileId] || "/img/default.png";
+            }
+
+            // Selección de perfil
+            profilePics.addEventListener('click', (e) => {
+                if (e.target.tagName === 'IMG') {
+                    // Resetear selección anterior
+                    document.querySelectorAll('#profilePics img').forEach(img => {
+                        img.style.border = '2px solid transparent';
+                        img.removeAttribute('data-selected');
+                    });
+                    
+                    // Seleccionar nuevo perfil
+                    selectedProfile = e.target.dataset.profile;
+                    e.target.style.border = '2px solid #00a884';
+                    e.target.setAttribute('data-selected', 'true');
+                    
+                    console.log(`Perfil seleccionado: ${selectedProfile}`);
+                }
+            });
+
+            // Identificación de usuario
+            nameForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                if (!nameInput.value.trim()) {
+                    alert('Por favor ingresa tu nombre');
+                    return;
+                }
+                
+                if (!selectedProfile) {
+                    alert('Por favor selecciona una imagen de perfil');
+                    return;
+                }
+                
+                socket.emit('setUserName', {
+                    userName: nameInput.value.trim(),
+                    profile: selectedProfile,
+                });
+
+                loadingScreen.style.opacity = 0;
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    mainContent.style.display = 'flex';
+                }, 800);
+
+                userNameText.innerText = `Hola, ${nameInput.value.trim()}`;
+            });
+
+            // Mensajes de chat
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const message = input.value.trim();
+                if (message) {
+                    socket.emit('chat message', {
+                        userName: nameInput.value.trim(),
+                        profile: selectedProfile,
+                        message: message,
+                    });
+                    
+                    // Emitir evento de dejar de escribir
+                    clearTimeout(typingTimer);
+                    if (isTyping) {
+                        isTyping = false;
+                        socket.emit('stop typing');
+                    }
+                    
+                    input.value = '';
+                }
+            });
+
+            // Mostrar mensajes en la interfaz
+            socket.on('chat message', (data) => {
+                // Si es un mensaje de notificación, mostrarlo de forma especial
+                if (data.type === 'notification') {
+                    const notificationDiv = document.createElement('div');
+                    notificationDiv.classList.add('notification');
+                    notificationDiv.textContent = data.message;
+                    messages.appendChild(notificationDiv);
+                } else {
+                    const li = document.createElement('li');
+                    li.classList.add(data.userName === nameInput.value.trim() ? 'sent' : 'received');
+                    
+                    // Crear contenedor para la imagen de perfil
+                    const profileImage = document.createElement('img');
+                    profileImage.src = getProfileImagePath(data.profile);
+                    profileImage.alt = `${data.userName}'s Profile`;
+                    profileImage.classList.add('profile-image');
+                    
+                    // Crear contenedor para el contenido del mensaje
+                    const messageContent = document.createElement('div');
+                    messageContent.classList.add('message-content');
+                    messageContent.textContent = data.message;
+                    
+                    // Añadir elementos al mensaje
+                    li.appendChild(profileImage);
+                    li.appendChild(messageContent);
+                    messages.appendChild(li);
+                }
+
+                // Desplazar al final
+                messages.scrollTop = messages.scrollHeight;
+            });
+
+            // Lista de usuarios conectados
+            socket.on('update users', (users) => {
+                userNamesList.innerHTML = '';
+                users.forEach(user => {
+                    const li = document.createElement('li');
+                    
+                    // Añadir imagen de perfil
+                    const profileImg = document.createElement('img');
+                    profileImg.src = getProfileImagePath(user.profile);
+                    profileImg.alt = `${user.name}'s profile`;
+                    
+                    // Añadir nombre de usuario
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = user.name;
+                    
+                    li.appendChild(profileImg);
+                    li.appendChild(nameSpan);
+                    userNamesList.appendChild(li);
+                });
+            });
+
+            // Detectar escritura y enviar eventos
+            input.addEventListener('input', () => {
+    if (!isTyping) {
+        isTyping = true;
+        socket.emit('typing', { userName: nameInput.value.trim() });
+    }
+
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+        isTyping = false;
+        socket.emit('stop typing', { userName: nameInput.value.trim() });
+    }, 3000); // 3 segundos de inactividad
+});
+
+socket.on('typing', (data) => {
+    const userItems = userNamesList.querySelectorAll('li');
+    userItems.forEach(item => {
+        if (item.querySelector('span').textContent === data.userName) {
+            let typingIndicator = item.querySelector('[data-typing="true"]');
+            if (!typingIndicator) {
+                typingIndicator = document.createElement('small');
+                typingIndicator.textContent = ' (escribiendo...)';
+                typingIndicator.style.color = 'var(--whatsapp-green)';
+                typingIndicator.setAttribute('data-typing', 'true');
+                item.appendChild(typingIndicator);
+            }
+        }
+    });
+});
+
+socket.on('stop typing', (data) => {
+    const userItems = userNamesList.querySelectorAll('li');
+    userItems.forEach(item => {
+        if (item.querySelector('span').textContent === data.userName) {
+            const typingIndicator = item.querySelector('[data-typing="true"]');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+    });
+});
+
+        });
+    </script>
+</body>
+</html>
