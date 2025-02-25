@@ -238,7 +238,7 @@
             height: calc(100vh - 120px);
             overflow-y: auto;
             background: var(--chat-bg);
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='https://wallpapers.com/images/hd/dragon-ball-z-4k-pc-3840-x-2160-kn1v9krblc0r2dql.jpg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath fill-rule='evenodd' d='M41 37.59V25h-2v12.59l-5.41-5.41L32 33.75 40 41.75l8-8-1.59-1.57-5.41 5.41'/%3E%3C/svg%3E");
+            background-image: url(./img/dragon-ball-z-4k-pc-3840-x-2160-kn1v9krblc0r2dql.jpg);
             background-repeat: repeat;
             background-color: var(--chat-bg);
             display: flex;
@@ -266,21 +266,29 @@
         
 
         .sent .message-content {
-            background: var(--message-out);
+           background: var(--message-out);
             color: var(--message-text-out);
             border-top-right-radius: 0;
-        }
+            margin-left: auto;  /* Esto alineará el mensaje a la derecha */
+}
 
-        .sent .message-content::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: -8px;
-            width: 0;
-            height: 0;
-            border-left: 8px solid var(--message-out);
-            border-top: 8px solid transparent;
-        }
+.sent .message-content::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: -8px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid var(--message-out);
+    border-top: 8px solid transparent;
+}
+
+/* Alinear la imagen del perfil a la derecha */
+.sent .profile-image {
+    margin-left: 10px;
+    order: 2;
+}
+
 
         
 
